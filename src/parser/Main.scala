@@ -1,4 +1,7 @@
+package parser
+
 import java.util.Scanner
+
 import scala.util.control.Breaks.{break, breakable}
 
 /**
@@ -7,6 +10,7 @@ import scala.util.control.Breaks.{break, breakable}
 object Main {
   val scan = new Scanner(System.in)
   val str = new StringBuilder
+  var env = Eval.initialEnv
 
   def main(args: Array[String]) {
     breakable{
@@ -17,9 +21,12 @@ object Main {
           case 'e' => {
             try{
               val program = parse(str.toString()).get
-//              for(stmt <- stmtLst) env = Evaluator.eval(stmt,env)
               println("parsed:\n" + program.foldRight("")((e,s) => e.toString + "\n" + s))
-//              println("ans: " + env.ret)
+              for(form <- program) {
+                val evaledPair = Eval.eval(form,env)
+                env = evaledPair._2
+                println("evaled: " + evaledPair._1)
+              }
             }
             catch{
               case e => println(e)
@@ -30,7 +37,7 @@ object Main {
             break()
           }
           case 's' => {
-//            println(env)
+            println("env: " + env)
           }
         }
       }

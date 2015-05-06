@@ -1,3 +1,5 @@
+package parser
+
 import scala.util.parsing.combinator._
 import scala.util.parsing.input.Positional
 
@@ -10,17 +12,11 @@ case class Sym(text : String) extends Atom
 case class Str(text : String) extends Atom
 case class Num(num : Int) extends Atom
 
-sealed trait Func extends Atom
-sealed trait Syntax extends Func
-sealed trait Primitive extends Func
-sealed trait Closure extends Func
-sealed trait Macro extends Func
-
-case class If(cond : Form, thenForm : Form, elseForm : Form) extends Syntax
-case class Quote(form : Form) extends Syntax
-case class Def(name : Sym, value : Form) extends Syntax
-case class DefMacro(name : Sym, value : Form) extends Syntax
-
+sealed trait Func extends Form
+case class Syntax(oriEval : (Lst,Env) => (Form,Env)) extends Func
+case class Macro() extends Func
+case class Closure() extends Func
+case class Primitive(priFn : (Primitive,List[Form]) => Form) extends Func
 
 
 /**
@@ -35,7 +31,7 @@ case class DefMacro(name : Sym, value : Form) extends Syntax
  */
 object BasicParser extends JavaTokenParsers with RegexParsers {
   def SYMBOL : Parser[Sym] = positioned(ident ^^ {case e => Sym(e)})
-  def STRING : Parser[Str] = positioned(stringLiteral ^^ {case e => Str(e)})
+  def STRING : Parser[Str] = positioned(stringLiteral ^^ {case e => Str(e.substring(1,e.length - 1))})
   def NUMBER : Parser[Num] = positioned(decimalNumber ^^ {case e => Num(e.toInt)})
   def form : Parser[Form] = opt(readMacro) ~ (list | atom) ^^ {
     case Some(mac) ~ e => Lst(mac :: e :: Nil)
