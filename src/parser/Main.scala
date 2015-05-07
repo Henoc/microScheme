@@ -3,7 +3,7 @@ package parser
 import java.util.Scanner
 
 import scala.util.control.Breaks.{break, breakable}
-
+import scala.collection.mutable.{Map => MuMap}
 /**
  * Created by heno on 2015/05/05.
  */
@@ -22,7 +22,7 @@ object Main {
               val program = parse(str.toString()).get
               println("parsed:\n" + program.foldRight("")((e,s) => e.toString + "\n" + s))
               for(form <- program) {
-                val ret = Eval.eval(form,Eval.env)
+                val ret = Eval.eval(form,MuMap.empty)
                 println("return: " + ret)
               }
             }
@@ -35,7 +35,7 @@ object Main {
             break()
           }
           case 's' => {
-            println("env: " + Eval.env)
+            println("env: " + Eval.globalEnv)
           }
         }
       }
