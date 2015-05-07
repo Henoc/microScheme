@@ -13,10 +13,10 @@ case class Str(text : String) extends Atom
 case class Num(num : Int) extends Atom
 
 sealed trait Func extends Form
-case class Syntax(oriEval : (Lst,Env) => (Form,Env)) extends Func
+case class Syntax(oriEval : (Lst,Env) => Form) extends Func
 case class Macro() extends Func
-case class Closure() extends Func
-case class Primitive(priFn : (Primitive,List[Form]) => Form) extends Func
+case class Closure(lambdaExpr : Form,var closedEnv : Env) extends Func
+case class Primitive(priFn : (Primitive,List[Form]) => Form) extends Func   // priFnの引数:Primitive はエラー時の行報告用であり、あまり必要はない
 
 
 /**

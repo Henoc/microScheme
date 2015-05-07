@@ -10,7 +10,6 @@ import scala.util.control.Breaks.{break, breakable}
 object Main {
   val scan = new Scanner(System.in)
   val str = new StringBuilder
-  var env = Eval.initialEnv
 
   def main(args: Array[String]) {
     breakable{
@@ -23,9 +22,8 @@ object Main {
               val program = parse(str.toString()).get
               println("parsed:\n" + program.foldRight("")((e,s) => e.toString + "\n" + s))
               for(form <- program) {
-                val evaledPair = Eval.eval(form,env)
-                env = evaledPair._2
-                println("evaled: " + evaledPair._1)
+                val ret = Eval.eval(form,Eval.env)
+                println("return: " + ret)
               }
             }
             catch{
@@ -37,7 +35,7 @@ object Main {
             break()
           }
           case 's' => {
-            println("env: " + env)
+            println("env: " + Eval.env)
           }
         }
       }

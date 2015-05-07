@@ -4,21 +4,23 @@ package parser
  * Created by heno on 2015/05/06.
  */
 
+import scala.collection.mutable.{Map => MuMap}
+
 object Eval {
-  def eval(form:Form,env:Env):(Form,Env) = form match {
+  def eval(form:Form,env:Env):Form = form match {
     case lst @ Lst(elems) => eval(elems.head,env) match{
-      case (fn : Func, env) => fn match {
+      case fn : Func => fn match {
           // シンタックス形式が持つ、専用の評価関数に入れる
         case Syntax(oriEval) => oriEval(lst,env)
           // シンタックス形式以外は関数適用する (引数はあらかじめ評価する)
-        case _ => (fnApply(fn, elems.tail.map(eval(_,env)._1)),env)
+        case _ => fnApply(fn, elems.tail.map(eval(_,env)))
       }
-      case (others, _) => throw new EvalException("評価されたリストの先頭要素が関数値ではありません",others)
+      case others => throw new EvalException("評価されたリストの先頭要素が関数値ではありません",others)
     }
     case atom : Atom => atom match {
-      case sym : Sym => (env.getOrElse(sym,throw new EvalException("シンボルに関連付けられたアトムがありません",form)),env)
+      case sym : Sym => env.getOrElse(sym,throw new EvalException("シンボルに関連付けられたアトムがありません",form))
         // 自己評価フォーム
-      case _ => (atom,env)
+      case _ => atom
     }
   }
 
@@ -31,7 +33,23 @@ object Eval {
    */
   def fnApply(fn : Func, args : List[Form]) = fn match{
     case p @ Primitive(priFn) => priFn(p,args)
+//    case c @ Closure(lambdaExpr,closedEnv) => lambdaExpr match{
+//      case Lst(Sym("lambda") :: params :: expr :: Nil) => {
+//        val paramLst = lstCover(params)
+//        //TODO
+//      }
+//      case _ => throw new EvalException("クロージャの中身が不正です",c)
+//    }
     case _ => throw new EvalException("プリミティブ関数以外の関数適用可能型は未実装です",fn)
+  }
+
+  /**
+   * リスト以外のフォームまたはリストをリストにする
+   * @return
+   */
+  def lstCover : Form => Lst = {
+    case Lst(form) => Lst(form)
+    case others => Lst(others :: Nil)
   }
 
   /**
@@ -46,11 +64,11 @@ object Eval {
   }
 
   /**
-   * 初期の環境
+   * 環境(可変マップ)
    * 関数などが入っている
    */
-  val initialEnv : Env =
-    Map(
+  val env : Env =
+    MuMap(
       Sym("true") -> Sym("true"),
       Sym("false") -> Sym("false"),
       Sym("nil") -> Sym("nil"),
@@ -68,7 +86,7 @@ object Eval {
       },
       Sym("if") -> Syntax{
         case (Lst(syntax :: cond :: thenSt :: elseSt :: Nil),env) => {
-          eval(cond,env)._1 match{
+          eval(cond,env) match{
             case Sym("true") => eval(thenSt,env)
             case Sym("false") => eval(elseSt,env)
             case _ => throw new EvalException("真偽シンボル以外が条件式より返されました",cond)
@@ -82,15 +100,15 @@ object Eval {
           (symbols,values) match{
             // シンボル が1つだけのとき
             case (s @ Sym(_), v : Form) => {
-              val nv = eval(v,env)._1
-              val newEnv = env + (s -> nv)
-              (Sym("nil"),newEnv)
+              val nv = eval(v,env)
+              env += s -> nv
+              Sym("nil")
             }
             // シンボル がリストになっているとき
             // 値もリストである必要がある
             case (Lst(s : List[Sym]),Lst(v)) if s.length == v.length => {
-              val newEnv = env ++ s.zip(v.map(eval(_,env)._1))
-              (Sym("nil"),newEnv)
+              env ++= s.zip(v.map(eval(_,env)))
+              Sym("nil")
             }
             case _ => throw new EvalException("変数定義において、シンボルの数と値の数が一致しないか、シンボルではありません",syntax)
           }
@@ -98,7 +116,7 @@ object Eval {
         case (others,_) => throw new EvalException("おかしなdef文",others)
       },
       Sym("quote") -> Syntax{
-        case (Lst(syntax :: quoted :: Nil), env) => (quoted,env)
+        case (Lst(syntax :: quoted :: Nil), env) => quoted
         case (others,_) => throw new EvalException("おかしなquote文",others)
       }
     )
